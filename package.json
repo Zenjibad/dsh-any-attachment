@@ -6,18 +6,19 @@
   "main": "lib/index.mjs",
   "exports": {
     ".": "./lib/index.mjs",
+    "./client": "./client/client.js",
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
   },
   "files": [
     "lib/index.mjs",
     "lib/validate.mjs",
+    "client/client.js",
     "cordis.patch.yml"
   ],
   "license": "MIT",
   "dsh": {
-    "bundle": {
-      "patch": "./cordis.patch.yml"
-    }
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": { "platform": "web", "inject": ["connection", "slots", "sessions", "locale"] }
   }
 }
