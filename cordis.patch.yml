@@ -1,0 +1,5 @@
+# dsh-any-attachment patch layer: mounts the host channel row. The client
+# half is served from the same row once dsh.client is declared (Task 3).
+- insert:
+    - id: dsh-any-attachment
+      name: dsh-any-attachment

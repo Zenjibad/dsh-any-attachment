@@ -1,0 +1,23 @@
+{
+  "name": "dsh-any-attachment",
+  "description": "dsh bundle: attach any file type in dsh web — text-likes inline, binaries as workspace path references, rasters via the built-in pipeline",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "lib/index.mjs",
+  "exports": {
+    ".": "./lib/index.mjs",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/index.mjs",
+    "lib/validate.mjs",
+    "cordis.patch.yml"
+  ],
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}
