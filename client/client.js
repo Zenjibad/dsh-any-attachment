@@ -71,7 +71,7 @@ window.__ModuleLoader__.load({
       if (room <= 0) return;
       var accepted = split.others.slice(0, room);
       Promise.all(accepted.map(function (f) { return upload(ctx, sessionId, f); }))
-        
+        .then(function (uploaded) { setPending(sessionId, pending.concat(uploaded)); })
         .catch(function (e) { console.error('[dsh-any-attachment] upload failed:', e); });
     }
 
