@@ -29,6 +29,7 @@
         "slots",
         "sessions",
         "conversation",
+        "inputTriggers",
         "locale"
       ]
     }

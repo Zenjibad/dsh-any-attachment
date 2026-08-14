@@ -32,6 +32,10 @@ test('bundle registers the @file trigger source with a pathless mention', () => 
   assert.ok(!bundle.includes("'@' + attachment.name + ' (' + attachment.path + ')'"), 'drop mentions must not carry the path')
 })
 
+test('mentions never carry absolute paths', () => {
+  assert.ok(bundle.includes("return { text: '@' + pick.candidate.name };"))
+})
+
 test('no rail/send machinery remains', () => {
   assert.equal(bundle.includes('Send with files'), false)
   assert.equal(bundle.includes('conversation.input.dock'), false)
