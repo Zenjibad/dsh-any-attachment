@@ -20,7 +20,7 @@ window.__ModuleLoader__.load({
       };
     }
     function attachmentBlock(file) {
-      var head = 'Attached: ' + file.name + ' (' + file.path + ')';
+      var head = 'Attached: ' + file.name;
       if (file.kind === 'binary') return head;
       return head + '\n--- extracted text (first 50 KB) ---\n' + file.extractedText;
     }
@@ -47,15 +47,15 @@ window.__ModuleLoader__.load({
         var bin = '';
         for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
         return ctx.connection.rpc.call('/attachments-any', 'upload',
-          { sessionId: sessionId, name: file.name, data: btoa(bin) });
+          { name: file.name, data: btoa(bin) });
       }).then(function (result) {
         if (!result.ok) throw new Error(result.error.message);
         var v = result.value;
-        return { name: file.name, size: file.size, path: v.path, kind: v.kind, extractedText: v.extractedText };
+        return { id: v.id, name: v.name, size: v.size, kind: v.kind, extractedText: v.extractedText };
       });
     }
-    function download(ctx, sessionId, path) {
-      return ctx.connection.rpc.call('/attachments-any', 'read', { sessionId: sessionId, path: path });
+    function download(ctx, id) {
+      return ctx.connection.rpc.call('/attachments-any', 'read', { id: id });
     }
 
     // ---- routing: rasters to the built-in flow, others to the channel ----
@@ -141,10 +141,10 @@ window.__ModuleLoader__.load({
         return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 4, padding: '6px 12px' } },
           React.createElement(RememberSession, { sessionId: props.sessionId, inputActions: props.inputActions }),
           files.map(function (f, i) {
-            return React.createElement('div', { key: f.path, style: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 } },
+            return React.createElement('div', { key: f.id, style: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 } },
               React.createElement('span', null, f.name + ' · ' + Math.ceil(f.size / 1024) + ' KB'),
               React.createElement('button', { type: 'button', title: 'Download', onClick: function () {
-                download(ctx, props.sessionId, f.path).then(function (r) {
+                download(ctx, f.id).then(function (r) {
                   if (!r.ok) return;
                   var a = document.createElement('a');
                   a.href = URL.createObjectURL(new Blob([decodeBase64(r.value.data)]));
