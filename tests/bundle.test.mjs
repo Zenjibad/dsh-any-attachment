@@ -4,10 +4,9 @@ import { readFileSync } from 'node:fs'
 
 /**
  * Structural guards on the shipped client bundle. These pin the failure
- * classes found in E2E: a debug-log strip that removed the setPending
- * continuation, a factory that forgot `return module.exports`, and a missing
- * `dsh.client` declaration. The bundle is factory-form CJS served verbatim,
- * so the assertions read the served text.
+ * classes found in E2E: a debug-log strip that deleted code, a factory that
+ * forgot `return module.exports`, a missing `dsh.client` declaration, and
+ * missing files in the publish list.
  */
 
 const bundle = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
@@ -18,12 +17,17 @@ test('bundle carries no debug markers', () => {
   assert.equal((bundle.match(/console\.error/g) || []).length, 1, 'only the intentional upload-failure report may log')
 })
 
-test('intake keeps the setPending continuation after uploads', () => {
-  const intake = bundle.slice(bundle.indexOf('Promise.all(accepted.map'))
-  const thenPos = intake.indexOf('.then(function (uploaded) { setPending(sessionId, pending.concat(uploaded)); })')
-  const catchPos = intake.indexOf('.catch(')
-  assert.ok(thenPos !== -1 && catchPos !== -1, 'setPending .then must precede the .catch')
-  assert.ok(thenPos < catchPos, '.then must come before .catch')
+test('bundle inserts the mention into the draft on upload', () => {
+  assert.ok(bundle.includes("inputActions.setDraft(draft + separator + stored.map(mentionOf).join(' '));"),
+    'uploads must compose one mention text and set it as the draft')
+  assert.ok(bundle.includes("'@' + attachment.name + ' (' + attachment.path + ')'"),
+    'the mention must carry name and path')
+})
+
+test('no rail/send machinery remains', () => {
+  assert.equal(bundle.includes('Send with files'), false)
+  assert.equal(bundle.includes('conversation.input.dock'), false)
+  assert.equal(bundle.includes('blocks.set'), false)
 })
 
 test('factory returns module.exports and exports the plugin contract', () => {
