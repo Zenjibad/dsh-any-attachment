@@ -18,7 +18,18 @@
   ],
   "license": "MIT",
   "dsh": {
-    "bundle": { "patch": "./cordis.patch.yml" },
-    "client": { "platform": "web", "inject": ["connection", "slots", "sessions", "locale"] }
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "connection",
+        "slots",
+        "sessions",
+        "conversation",
+        "locale"
+      ]
+    }
   }
 }

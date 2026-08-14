@@ -71,7 +71,7 @@ window.__ModuleLoader__.load({
       if (room <= 0) return;
       var accepted = split.others.slice(0, room);
       Promise.all(accepted.map(function (f) { return upload(ctx, sessionId, f); }))
-        .then(function (uploaded) { setPending(sessionId, pending.concat(uploaded)); })
+        
         .catch(function (e) { console.error('[dsh-any-attachment] upload failed:', e); });
     }
 
@@ -82,23 +82,24 @@ window.__ModuleLoader__.load({
       var block = pending.map(attachmentBlock).join('\n\n');
       var text = draft === '' ? block : draft + '\n\n' + block;
       if (text.length > MAX_MESSAGE_TEXT) text = text.slice(0, MAX_MESSAGE_TEXT);
-      var session = sessions.scope(sessionId);
+      var binding = sessions.binding(sessionId); var session = binding && binding.session;
       ctx.conversation.sendSession(session, text, imageIds, 'queue')
         .then(function () {
           setPending(sessionId, []);
           inputActions.setDraft('');
           if (imageIds.length > 0) inputActions.pruneImages(imageIds);
         })
-        .catch(function () { /* draft + files retained; error surfaces via conversation state */ });
+        ;
     }
 
     var activeSessionId = null;
+    var activeInputActions = null;
 
     function apply(ctx) {
       // The active-session marker: session-scoped components keep the id
       // current for the global drop handler.
       function RememberSession(props) {
-        React.useEffect(function () { activeSessionId = props.sessionId; }, [props.sessionId]);
+        React.useEffect(function () { activeSessionId = props.sessionId; if (props.inputActions) activeInputActions = props.inputActions; }, [props.sessionId]);
         return null;
       }
 
@@ -108,7 +109,7 @@ window.__ModuleLoader__.load({
       function PaperclipButton(props) {
         var inputRef = React.useRef(null);
         return React.createElement(React.Fragment, null,
-          React.createElement(RememberSession, { sessionId: props.sessionId }),
+          React.createElement(RememberSession, { sessionId: props.sessionId, inputActions: props.inputActions }),
           React.createElement('input', { ref: inputRef, type: 'file', multiple: true, style: { display: 'none' },
             onChange: function (e) {
               var files = Array.from(e.target.files || []);
@@ -135,10 +136,10 @@ window.__ModuleLoader__.load({
             : undefined);
         }, [files.length, props.sessionId]);
         if (files.length === 0) {
-          return React.createElement(RememberSession, { sessionId: props.sessionId });
+          return React.createElement(RememberSession, { sessionId: props.sessionId, inputActions: props.inputActions });
         }
         return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 4, padding: '6px 12px' } },
-          React.createElement(RememberSession, { sessionId: props.sessionId }),
+          React.createElement(RememberSession, { sessionId: props.sessionId, inputActions: props.inputActions }),
           files.map(function (f, i) {
             return React.createElement('div', { key: f.path, style: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 } },
               React.createElement('span', null, f.name + ' · ' + Math.ceil(f.size / 1024) + ' KB'),
@@ -179,9 +180,11 @@ window.__ModuleLoader__.load({
               ctx: ctx,
               sessionId: sessionId,
               useFiles: function (selector) {
-                return React.useSyncExternalStore(
-                  function (cb) { return subscribePending(sessionId, cb); },
-                  function () { return selector(getPending(sessionId)); });
+                var tick = React.useState(0);
+                React.useEffect(function () {
+                  return subscribePending(sessionId, function () { tick[1](function (t) { return t + 1; }); });
+                }, [sessionId]);
+                return selector(getPending(sessionId));
               },
             };
           } }, FileRail);
@@ -197,10 +200,8 @@ window.__ModuleLoader__.load({
         e.stopPropagation();
         var sessionId = activeSessionId;
         if (!sessionId) return;
-        var sessions = ctx.get('sessions');
-        var scoped = sessions.scope(sessionId);
-        if (!scoped) return;
-        intake(ctx, sessionId, scoped.inputActions, files);
+        if (!activeInputActions) return;
+        intake(ctx, sessionId, activeInputActions, files);
       }
       document.addEventListener('drop', onDrop, true);
       ctx.effect(function () {
@@ -208,6 +209,7 @@ window.__ModuleLoader__.load({
       }, 'dsh-any-attachment: drop interception');
     }
 
-    module.exports = { name: 'dsh-any-attachment', inject: ['connection', 'slots', 'sessions', 'locale'], apply: apply };
+    module.exports = { name: 'dsh-any-attachment', inject: ['connection', 'slots', 'sessions', 'conversation', 'locale'], apply: apply };
+    return module.exports;
   }
 });
