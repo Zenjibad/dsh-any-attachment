@@ -17,23 +17,23 @@ test('bundle carries no debug markers', () => {
   assert.equal((bundle.match(/console\.error/g) || []).length, 1, 'only the intentional upload-failure report may log')
 })
 
-test('bundle inserts the mention into the draft on upload', () => {
-  assert.ok(bundle.includes("inputActions.setDraft(draft + separator + stored.map(mentionOf).join(' '));"),
-    'uploads must compose one mention text and set it as the draft')
-  assert.ok(bundle.includes("return '@' + attachment.name;"),
-    'the mention must be pathless (name only)')
+test('bundle inserts uploads as reference chips, not plain text', () => {
+  assert.ok(bundle.includes('insertReference(mention, { start: state.draft.length, end: state.draft.length, draftRev: state.draftRev })'),
+    'uploads must insert reference chips at the draft end')
+  assert.ok(!bundle.includes('mentionOf'), 'the plain-text mention composer must be gone')
 })
 
-test('bundle registers the @file trigger source with a pathless mention', () => {
+test('bundle registers the @file source with chip picks and an exact-path codec', () => {
   assert.ok(bundle.includes("trigger: '@'"), 'must bind the @ trigger')
   assert.ok(bundle.includes("name: 'file'"), 'must register the file source')
   assert.ok(bundle.includes('registerSource'), 'must register via ctx.inputTriggers')
-  assert.ok(bundle.includes("return { text: '@' + pick.candidate.name }"), 'pick must replace the span with the pathless mention')
-  assert.ok(!bundle.includes("'@' + attachment.name + ' (' + attachment.path + ')'"), 'drop mentions must not carry the path')
+  assert.ok(bundle.includes('source: \'file\',\n                ref: pick.candidate.name,'), 'pick must return a reference insert')
+  assert.ok(bundle.includes("'@' + ref + ' (' + path + ')'"), 'the codec must serialize the exact path into the sent text')
 })
 
-test('mentions never carry absolute paths', () => {
-  assert.ok(bundle.includes("return { text: '@' + pick.candidate.name };"))
+test('draft-side mentions stay pathless; paths resolve only at submit', () => {
+  assert.ok(bundle.includes("label: '@' + a.name"), 'chip labels are pathless')
+  assert.ok(!bundle.includes("'@' + attachment.name + ' (' + attachment.path + ')'"), 'no pathful composition in the draft path')
 })
 
 test('no rail/send machinery remains', () => {

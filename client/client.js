@@ -14,9 +14,6 @@ window.__ModuleLoader__.load({
         others: files.filter(function (f) { return RASTER_TYPES.indexOf(f.type) === -1; }),
       };
     }
-    function mentionOf(attachment) {
-      return '@' + attachment.name;
-    }
 
     // ---- upload via the channel ----
     function upload(ctx, file) {
@@ -32,8 +29,13 @@ window.__ModuleLoader__.load({
     var activeSessionId = null;
     var activeInputActions = null;
     var activeDraft = '';
+    var activeDraftRev = 0;
+    // ref (stored/relative name) -> exact absolute path, resolved at submit
+    // time by the @file source codec so the sent message never makes the
+    // agent guess where a mentioned file lives.
+    var refPaths = new Map();
 
-    function intake(ctx, inputActions, draft, files) {
+    function intake(ctx, sessionId, inputActions, files) {
       var split = splitRasters(files);
       if (split.rasters.length > 0) {
         var created = ctx.conversation.createDraftImages(split.rasters);
@@ -44,10 +46,31 @@ window.__ModuleLoader__.load({
         .then(function (attachments) {
           var stored = attachments.filter(function (a) { return a.ok; }).map(function (a) { return a.value; });
           if (stored.length === 0) return;
-          var separator = draft === '' || /\s$/.test(draft) ? '' : ' ';
-          inputActions.setDraft(draft + separator + stored.map(mentionOf).join(' '));
+          var shell = inputShell(ctx, sessionId);
+          for (var i = 0; i < stored.length; i++) {
+            var a = stored[i];
+            refPaths.set(a.name, a.path);
+            var mention = { source: 'file', ref: a.name, label: '@' + a.name, clipboardText: '@' + a.name };
+            if (shell === null) {
+              // No session shell (unexpected): fall back to a plain pathless mention.
+              activeInputActions.setDraft(activeDraft + (activeDraft === '' || /\s$/.test(activeDraft) ? '' : ' ') + '@' + a.name);
+              continue;
+            }
+            var state = shell.snapshot;
+            var inserted = shell.insertReference(mention, { start: state.draft.length, end: state.draft.length, draftRev: state.draftRev });
+            if (!inserted) break; // CAS failed: stop rather than misplace chips
+          }
         })
         .catch(function (e) { console.error('[dsh-any-attachment] upload failed:', e); });
+    }
+
+    function inputShell(ctx, sessionId) {
+      try {
+        var actx = ctx.get('sessions').scope(sessionId);
+        return actx === undefined ? null : ctx.conversation.input.for(actx);
+      } catch {
+        return null;
+      }
     }
 
     function apply(ctx) {
@@ -55,13 +78,16 @@ window.__ModuleLoader__.load({
       // drop handler: session id, inputActions, and the live draft text.
       function KitKeeper(props) {
         // useInput is a hook: it must run at the component top level, never
-        // inside an effect. Read the draft here and stash it via an effect.
+        // inside an effect. Read the draft and revision here and stash via
+        // an effect.
         var draft = props.useInput(function (s) { return s.draft; });
+        var draftRev = props.useInput(function (s) { return s.draftRev; });
         React.useEffect(function () {
           activeSessionId = props.sessionId;
           if (props.inputActions) activeInputActions = props.inputActions;
           activeDraft = draft;
-        }, [props.sessionId, props.inputActions, draft]);
+          activeDraftRev = draftRev;
+        }, [props.sessionId, props.inputActions, draft, draftRev]);
         return null;
       }
 
@@ -76,7 +102,7 @@ window.__ModuleLoader__.load({
             onChange: function (e) {
               var files = Array.from(e.target.files || []);
               e.target.value = '';
-              if (files.length > 0) intake(ctx, props.inputActions, activeDraft, files);
+              if (files.length > 0) intake(ctx, props.sessionId, props.inputActions, files);
             } }),
           React.createElement('button', { type: 'button', title: 'Attach files', 'aria-label': 'Attach files',
             style: { background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, padding: '0 4px' },
@@ -98,7 +124,7 @@ window.__ModuleLoader__.load({
         e.preventDefault();
         e.stopPropagation();
         if (!activeSessionId || !activeInputActions) return;
-        intake(ctx, activeInputActions, activeDraft, files);
+        intake(ctx, activeSessionId, activeInputActions, files);
       }
       document.addEventListener('drop', onDrop, true);
       ctx.effect(function () {
@@ -115,14 +141,32 @@ window.__ModuleLoader__.load({
             return ctx.connection.rpc.call('/attachments-any', 'list', { sessionId: session.sessionId })
               .then(function (result) {
                 if (!result.ok) return [];
-                var names = result.value.files;
+                var files = result.value.files;
                 var q = String(req.query).toLowerCase();
-                return q === ''
-                  ? names.map(function (n) { return { name: n }; })
-                  : names.filter(function (n) { return n.toLowerCase().indexOf(q) !== -1; }).map(function (n) { return { name: n }; });
+                var matched = q === ''
+                  ? files
+                  : files.filter(function (f) { return f.name.toLowerCase().indexOf(q) !== -1; });
+                return matched.map(function (f) { return { name: f.name, path: f.path }; });
               });
           },
-          onPick: function (pick) { return { text: '@' + pick.candidate.name }; },
+          onPick: function (pick) {
+            refPaths.set(pick.candidate.name, pick.candidate.path);
+            return {
+              insert: {
+                source: 'file',
+                ref: pick.candidate.name,
+                label: '@' + pick.candidate.name,
+                clipboardText: '@' + pick.candidate.name,
+              },
+            };
+          },
+          codec: {
+            clipboardText: function (ref) { return '@' + ref; },
+            serialize: function (ref) {
+              var path = refPaths.get(ref);
+              return Promise.resolve(path === undefined ? '@' + ref : '@' + ref + ' (' + path + ')');
+            },
+          },
         });
       }, 'dsh-any-attachment: @file source');
     }

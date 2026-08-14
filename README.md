@@ -4,9 +4,9 @@ A [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (`dsh`) pl
 
 ## How mentions work
 
-- **`@`-list**: in the composer, type `@` and a menu shows the session workspace's files, recursively and flat (`src/main.ts`, `docs/guide.md`, …). Type more to filter; pick one and a pathless `@name` mention is inserted into the draft.
-- **Drop / + button**: drop a local file onto the composer (or click **+**) and it is stored privately; the draft gains `@<stored-name>` only — no path, no drive letter.
-- Send as usual (Enter or the send button) — the message contains only the relative mention, and the agent resolves it: it first looks for `./<name>` relative to its working directory, then falls back to the private store at `$DSH_HOME/attachments-any/<name>`, and reads the file with its own tools.
+- **`@`-list**: in the composer, type `@` and a menu shows the session workspace's files, recursively and flat (`src/main.ts`, `docs/guide.md`, …). Type more to filter; pick one and a pathless `@name` chip is inserted into the draft.
+- **Drop / + button**: drop a local file onto the composer (or click **+**) and it is stored privately; the draft gains an `@<stored-name>` chip — no path, no drive letter.
+- Send as usual (Enter or the send button) — every mention chip resolves to its **exact file location** in the sent message (`@name (C:\...\absolute\path)`), so the agent reads the file directly instead of guessing where it lives.
 - Raster images (png/jpeg/webp/gif) still route to the built-in image pipeline (vision models see them).
 - Files live under `$DSH_HOME/attachments-any/` — private, never dumped into a workspace.
 

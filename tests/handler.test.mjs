@@ -84,7 +84,10 @@ test('list returns recursive relative paths, sorted, skipping hidden and node_mo
   const sessions = new Map([['s-1', { header: { cwd: ws } }]])
   const lister = createChannelHandler({ storeRoot: join(root, 'store'), resolveCwd: (id) => sessions.get(id)?.header.cwd })
   const value = ok(await lister('list', { sessionId: 's-1' }, new AbortController().signal))
-  assert.deepEqual(value.files, ['readme.md', 'src/lib/util.js', 'src/main.ts'])
+  assert.deepEqual(value.files.map(f => f.name), ['readme.md', 'src/lib/util.js', 'src/main.ts'])
+  assert.deepEqual(value.files.map(f => f.path), [
+    join(ws, 'readme.md'), join(ws, 'src', 'lib', 'util.js'), join(ws, 'src', 'main.ts'),
+  ])
 })
 
 test('list respects the depth cap (files at depth 4 listed, depth 5 not)', async () => {
@@ -100,7 +103,7 @@ test('list respects the depth cap (files at depth 4 listed, depth 5 not)', async
   const sessions = new Map([['s-1', { header: { cwd: ws } }]])
   const lister = createChannelHandler({ storeRoot: join(root, 'store'), resolveCwd: (id) => sessions.get(id)?.header.cwd })
   const value = ok(await lister('list', { sessionId: 's-1' }, new AbortController().signal))
-  assert.deepEqual(value.files,
+  assert.deepEqual(value.files.map(f => f.name),
     ['d0/d1/d2/d3/f3.txt', 'd0/d1/d2/f2.txt', 'd0/d1/f1.txt', 'd0/f0.txt'],
     'depth-4 file must be listed; depth-5 file must not')
 })
