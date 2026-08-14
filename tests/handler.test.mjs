@@ -87,7 +87,25 @@ test('list returns recursive relative paths, sorted, skipping hidden and node_mo
   assert.deepEqual(value.files, ['readme.md', 'src/lib/util.js', 'src/main.ts'])
 })
 
-test('list respects the depth cap and entry cap', async () => {
+test('list respects the depth cap (files at depth 4 listed, depth 5 not)', async () => {
+  const { root, handler } = setup()
+  const ws = join(root, 'ws')
+  for (let d = 0; d < 5; d++) mkdirSync(join(ws, 'd' + d), { recursive: true })
+  mkdirSync(join(ws, 'd0', 'd1', 'd2', 'd3', 'd4'), { recursive: true })
+  writeFileSync(join(ws, 'd0', 'f0.txt'), 'x')
+  writeFileSync(join(ws, 'd0', 'd1', 'f1.txt'), 'x')
+  writeFileSync(join(ws, 'd0', 'd1', 'd2', 'f2.txt'), 'x')
+  writeFileSync(join(ws, 'd0', 'd1', 'd2', 'd3', 'f3.txt'), 'x')
+  writeFileSync(join(ws, 'd0', 'd1', 'd2', 'd3', 'd4', 'f4.txt'), 'x')
+  const sessions = new Map([['s-1', { header: { cwd: ws } }]])
+  const lister = createChannelHandler({ storeRoot: join(root, 'store'), resolveCwd: (id) => sessions.get(id)?.header.cwd })
+  const value = ok(await lister('list', { sessionId: 's-1' }, new AbortController().signal))
+  assert.deepEqual(value.files,
+    ['d0/d1/d2/d3/f3.txt', 'd0/d1/d2/f2.txt', 'd0/d1/f1.txt', 'd0/f0.txt'],
+    'depth-4 file must be listed; depth-5 file must not')
+})
+
+test('list respects the entry cap', async () => {
   const { root, handler } = setup()
   const ws = join(root, 'ws')
   for (let d = 0; d < 5; d++) mkdirSync(join(ws, 'd' + d), { recursive: true })

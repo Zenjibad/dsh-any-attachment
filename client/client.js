@@ -106,7 +106,6 @@ window.__ModuleLoader__.load({
       }, 'dsh-any-attachment: drop interception');
 
       // ---- @file trigger source: workspace file autocomplete ----
-      var fileNamesBySession = new Map(); // sessionId -> string[]
       ctx.effect(function () {
         return ctx.inputTriggers.registerSource({
           trigger: '@',
@@ -117,7 +116,6 @@ window.__ModuleLoader__.load({
               .then(function (result) {
                 if (!result.ok) return [];
                 var names = result.value.files;
-                fileNamesBySession.set(session.sessionId, names);
                 var q = String(req.query).toLowerCase();
                 return q === ''
                   ? names.map(function (n) { return { name: n }; })
@@ -125,10 +123,6 @@ window.__ModuleLoader__.load({
               });
           },
           onPick: function (pick) { return { text: '@' + pick.candidate.name }; },
-          lexicon: function () {
-            var cached = fileNamesBySession.get(activeSessionId);
-            return cached || [];
-          },
         });
       }, 'dsh-any-attachment: @file source');
     }
