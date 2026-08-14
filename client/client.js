@@ -54,13 +54,14 @@ window.__ModuleLoader__.load({
       // The composer control keeps the session kit current for the global
       // drop handler: session id, inputActions, and the live draft text.
       function KitKeeper(props) {
+        // useInput is a hook: it must run at the component top level, never
+        // inside an effect. Read the draft here and stash it via an effect.
+        var draft = props.useInput(function (s) { return s.draft; });
         React.useEffect(function () {
           activeSessionId = props.sessionId;
           if (props.inputActions) activeInputActions = props.inputActions;
-        }, [props.sessionId, props.inputActions]);
-        React.useEffect(function () {
-          activeDraft = props.useInput(function (s) { return s.draft; });
-        });
+          activeDraft = draft;
+        }, [props.sessionId, props.inputActions, draft]);
         return null;
       }
 
