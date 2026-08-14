@@ -20,8 +20,16 @@ test('bundle carries no debug markers', () => {
 test('bundle inserts the mention into the draft on upload', () => {
   assert.ok(bundle.includes("inputActions.setDraft(draft + separator + stored.map(mentionOf).join(' '));"),
     'uploads must compose one mention text and set it as the draft')
-  assert.ok(bundle.includes("'@' + attachment.name + ' (' + attachment.path + ')'"),
-    'the mention must carry name and path')
+  assert.ok(bundle.includes("return '@' + attachment.name;"),
+    'the mention must be pathless (name only)')
+})
+
+test('bundle registers the @file trigger source with a pathless mention', () => {
+  assert.ok(bundle.includes("trigger: '@'"), 'must bind the @ trigger')
+  assert.ok(bundle.includes("name: 'file'"), 'must register the file source')
+  assert.ok(bundle.includes('registerSource'), 'must register via ctx.inputTriggers')
+  assert.ok(bundle.includes("return { text: '@' + pick.candidate.name }"), 'pick must replace the span with the pathless mention')
+  assert.ok(!bundle.includes("'@' + attachment.name + ' (' + attachment.path + ')'"), 'drop mentions must not carry the path')
 })
 
 test('no rail/send machinery remains', () => {

@@ -15,7 +15,7 @@ window.__ModuleLoader__.load({
       };
     }
     function mentionOf(attachment) {
-      return '@' + attachment.name + ' (' + attachment.path + ')';
+      return '@' + attachment.name;
     }
 
     // ---- upload via the channel ----
@@ -104,9 +104,36 @@ window.__ModuleLoader__.load({
       ctx.effect(function () {
         return function () { document.removeEventListener('drop', onDrop, true); };
       }, 'dsh-any-attachment: drop interception');
+
+      // ---- @file trigger source: workspace file autocomplete ----
+      var fileNamesBySession = new Map(); // sessionId -> string[]
+      ctx.effect(function () {
+        return ctx.inputTriggers.registerSource({
+          trigger: '@',
+          name: 'file',
+          order: -1,
+          candidates: function (session, req) {
+            return ctx.connection.rpc.call('/attachments-any', 'list', { sessionId: session.sessionId })
+              .then(function (result) {
+                if (!result.ok) return [];
+                var names = result.value.files;
+                fileNamesBySession.set(session.sessionId, names);
+                var q = String(req.query).toLowerCase();
+                return q === ''
+                  ? names.map(function (n) { return { name: n }; })
+                  : names.filter(function (n) { return n.toLowerCase().indexOf(q) !== -1; }).map(function (n) { return { name: n }; });
+              });
+          },
+          onPick: function (pick) { return { text: '@' + pick.candidate.name }; },
+          lexicon: function () {
+            var cached = fileNamesBySession.get(activeSessionId);
+            return cached || [];
+          },
+        });
+      }, 'dsh-any-attachment: @file source');
     }
 
-    module.exports = { name: 'dsh-any-attachment', inject: ['connection', 'slots', 'sessions', 'conversation', 'locale'], apply: apply };
+    module.exports = { name: 'dsh-any-attachment', inject: ['connection', 'slots', 'sessions', 'conversation', 'inputTriggers', 'locale'], apply: apply };
     return module.exports;
   }
 });
