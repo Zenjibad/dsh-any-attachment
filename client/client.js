@@ -123,6 +123,12 @@ window.__ModuleLoader__.load({
         if (split.others.length === 0) return; // pure rasters: built-in handler takes it
         e.preventDefault();
         e.stopPropagation();
+        // The built-in composer hides its drop overlay in its bubble-phase
+        // drop handler (reset), which stopPropagation starves — and the window
+        // dragend reset never fires for external file drags. Dispatch a
+        // synthetic dragend so the built-in resets its overlay (its dragend
+        // listener has no dataTransfer gate).
+        window.dispatchEvent(new Event('dragend'));
         if (!activeSessionId || !activeInputActions) return;
         intake(ctx, activeSessionId, activeInputActions, files);
       }

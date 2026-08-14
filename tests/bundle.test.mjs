@@ -36,6 +36,11 @@ test('draft-side mentions stay pathless; paths resolve only at submit', () => {
   assert.ok(!bundle.includes("'@' + attachment.name + ' (' + attachment.path + ')'"), 'no pathful composition in the draft path')
 })
 
+test('drop interception resets the built-in overlay via synthetic dragend', () => {
+  assert.ok(bundle.includes("window.dispatchEvent(new Event('dragend'));"),
+    'intercepted drops must dispatch the window dragend reset so the built-in overlay hides')
+})
+
 test('no rail/send machinery remains', () => {
   assert.equal(bundle.includes('Send with files'), false)
   assert.equal(bundle.includes('conversation.input.dock'), false)
