@@ -12,6 +12,7 @@
   },
   "files": [
     "lib/index.mjs",
+    "lib/handler.mjs",
     "lib/validate.mjs",
     "client/client.js",
     "cordis.patch.yml"
